@@ -2,8 +2,6 @@ import os.path
 
 import base64
 import uuid
-import psycopg2
-import momoko
 
 import tornado
 from tornado.escape import json_encode
@@ -26,7 +24,8 @@ class Application(tornado.web.Application):
 
     def __init__(self):
         handlers = [
-            (r'/snippets/', Snippets)
+            (r'/snippets/$', Snippets),
+            (r'/snippets/(\d|)/$', CurrentSnippet)
         ]
 
         settings = dict(
@@ -63,14 +62,27 @@ class Snippets(BaseHandler):
                            (self.request.protocol,
                             self.request.host,
                             str(code['id'])))
-            code['created_date'] = self.__date_handler(code['created_date'])
+            code['created_date'] = Helpers.date_handler(code['created_date'])
             all_snippets.append(code)
         self.write(json_encode(all_snippets))
 
-    def __date_handler(self, obj):
+
+
+
+class CurrentSnippet(BaseHandler):
+
+    def get(self, snippet):
+        if snippet:
+            code = model_to_dict(Code.get(Code.id == snippet))
+            code['created_date'] = Helpers.date_handler(code['created_date'])
+            self.write(json_encode(code))
+
+
+class Helpers():
+
+    @staticmethod
+    def date_handler(obj):
         return obj.isoformat() if hasattr(obj, 'isoformat') else obj
-
-
 
 
 if __name__ == "__main__":
