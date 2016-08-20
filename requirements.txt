@@ -1,4 +1,2 @@
 tornado
-psycopg2
-momoko
 peewee

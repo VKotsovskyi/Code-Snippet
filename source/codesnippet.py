@@ -12,11 +12,11 @@ import tornado.ioloop
 from tornado import web
 from tornado import gen
 from peewee import *
-from model import User, Code
+from model import User, Code, db
 from datetime import date
 import datetime
 
-from local_setting import USERNAME, PASSWORD
+from playhouse.shortcuts import model_to_dict, dict_to_model
 
 from tornado.options import define, options
 
@@ -26,7 +26,7 @@ class Application(tornado.web.Application):
 
     def __init__(self):
         handlers = [
-            (r'/', Home)
+            (r'/snippets/', Snippets)
         ]
 
         settings = dict(
@@ -41,9 +41,9 @@ class Application(tornado.web.Application):
 
         super(Application, self).__init__(handlers, **settings)
 
-        self.db = PostgresqlDatabase('codesnippet', user=USERNAME, password=PASSWORD)
-        User.create_table(True)
-        Code.create_table(True)
+        self.db = db
+
+        self.db.create_tables([User, Code], True)
 
 
 class BaseHandler(web.RequestHandler):
@@ -52,10 +52,25 @@ class BaseHandler(web.RequestHandler):
         return self.application.db
 
 
-class Home(BaseHandler):
+class Snippets(BaseHandler):
+
     def get(self):
-        code = Code.get()
-        self.write(json_encode({}))
+        all_snippets = []
+        codes = Code.select().join(User)
+        for code in codes:
+            code = model_to_dict(code)
+            code['url'] = ("%s://%s/snippets/%s" %
+                           (self.request.protocol,
+                            self.request.host,
+                            str(code['id'])))
+            code['created_date'] = self.__date_handler(code['created_date'])
+            all_snippets.append(code)
+        self.write(json_encode(all_snippets))
+
+    def __date_handler(self, obj):
+        return obj.isoformat() if hasattr(obj, 'isoformat') else obj
+
+
 
 
 if __name__ == "__main__":

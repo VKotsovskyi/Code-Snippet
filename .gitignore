@@ -39,6 +39,7 @@ nosetests.xml
 /venv
 /env
 *.sqlite
+*.db
 /src/local_settings.py
 *.sublime-*
 /src/coverage
@@ -46,3 +47,5 @@ nosetests.xml
 
 .emacs.*
 local_setting.py
+
+.idea
