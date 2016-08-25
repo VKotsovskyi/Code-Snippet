@@ -2,6 +2,7 @@ import os.path
 
 import base64
 import uuid
+import json
 
 import tornado
 from tornado.escape import json_encode
@@ -32,7 +33,7 @@ class Application(tornado.web.Application):
             todo_title=u"Code",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
-            xsrf_cookies=True,
+            xsrf_cookies=False,
             cookie_secret=base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes),
             login_url="/auth/login",
             debug=True,
@@ -65,6 +66,43 @@ class Snippets(BaseHandler):
             code['created_date'] = Helpers.date_handler(code['created_date'])
             all_snippets.append(code)
         self.write(json_encode(all_snippets))
+
+    def post(self):
+        if self.get_body_argument('owner'):
+            owner = self.get_body_argument('owner')
+        else:
+            self.write(json_encode('owner is required'))
+
+        if self.get_body_argument('title'):
+            title = self.get_body_argument('title')
+        else:
+            self.write(json_encode('title is required'))
+
+        if self.get_body_argument('code'):
+            code = self.get_body_argument('code')
+        else:
+            self.write(json_encode('code is required'))
+
+        if self.get_body_argument('linenos'):
+            linenos = json.loads(self.get_body_argument('linenos'))
+        else:
+            self.write(json_encode('linenos is required'))
+
+        if self.get_body_argument('language'):
+            language = self.get_body_argument('language')
+        else:
+            self.write(json_encode('language is required'))
+
+        if self.get_body_argument('style'):
+            style = self.get_body_argument('style')
+        else:
+            self.write(json_encode('style is required'))
+
+        if owner and title and code and linenos and language and style:
+            code = Code(owner=owner, title=title, code=code, linenos=linenos, language=language, style=style)
+            code.save()
+        else:
+            self.write(json_encode('All fields are required'))
 
 
 
