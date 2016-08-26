@@ -66,6 +66,7 @@ class Snippets(BaseHandler):
             code['created_date'] = Helpers.date_handler(code['created_date'])
             all_snippets.append(code)
         self.write(json_encode(all_snippets))
+        self.set_header('Content-Type', 'application/json')
 
     def post(self):
         if self.get_body_argument('owner'):
@@ -113,7 +114,7 @@ class CurrentSnippet(BaseHandler):
         if snippet:
             code = model_to_dict(Code.get(Code.id == snippet))
             code['created_date'] = Helpers.date_handler(code['created_date'])
-            self.write(json_encode(code))
+            self.write(code)
 
 
 class Helpers():
