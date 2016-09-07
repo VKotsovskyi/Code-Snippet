@@ -59,7 +59,7 @@ class Snippets(BaseHandler):
         codes = Code.select().join(User)
         for code in codes:
             code = model_to_dict(code)
-            code['url'] = ("%s://%s/snippets/%s" %
+            code['url'] = ("%s://%s/snippets/%s/" %
                            (self.request.protocol,
                             self.request.host,
                             str(code['id'])))
@@ -115,6 +115,19 @@ class CurrentSnippet(BaseHandler):
             code = model_to_dict(Code.get(Code.id == snippet))
             code['created_date'] = Helpers.date_handler(code['created_date'])
             self.write(code)
+
+    def put(self, snippet):
+        if snippet:
+            arguments = json.loads(self.request.body)
+            code_write = Code.update(**arguments).where(Code.id == snippet)
+            code_write.execute()
+            code = model_to_dict(Code.get(Code.id == snippet))
+            code['created_date'] = Helpers.date_handler(code['created_date'])
+            self.write(code)
+
+    def delete(self, snippet):
+        code_write = Code.delete().where(Code.id == snippet)
+        code_write.execute()
 
 
 class Helpers():
