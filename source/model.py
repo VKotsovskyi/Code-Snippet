@@ -5,7 +5,7 @@ import datetime
 
 db = PostgresqlDatabase('codesnippet', user=USERNAME, password=PASSWORD)
 
-class User(Model):
+class Users(Model):
     username = CharField(unique=True)
 
     class Meta:
@@ -14,7 +14,7 @@ class User(Model):
 
 
 class Code(Model):
-    owner = ForeignKeyField(User, related_name='codes')
+    owner = ForeignKeyField(Users, related_name='codes')
     title = TextField()
     code = TextField()
     linenos = BooleanField(default=True)

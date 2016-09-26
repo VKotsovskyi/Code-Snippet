@@ -11,7 +11,7 @@ import tornado.ioloop
 from tornado import web
 from tornado import gen
 from peewee import *
-from model import User, Code, db
+from model import Users, Code, db
 from datetime import date
 import datetime
 
@@ -26,7 +26,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r'/snippets/$', Snippets),
-            (r'/snippets/(\d|)/$', CurrentSnippet)
+            (r'/snippets/(\d*|)/$', CurrentSnippet)
         ]
 
         settings = dict(
@@ -43,20 +43,21 @@ class Application(tornado.web.Application):
 
         self.db = db
 
-        self.db.create_tables([User, Code], True)
+        self.db.connect()
+        self.db.create_tables([Users, Code], True)
 
 
 class BaseHandler(web.RequestHandler):
     @property
     def db(self):
+        self.application.db.connect()
         return self.application.db
 
 
 class Snippets(BaseHandler):
-
     def get(self):
         all_snippets = []
-        codes = Code.select().join(User)
+        codes = Code.select().join(Users)
         for code in codes:
             code = model_to_dict(code)
             code['url'] = ("%s://%s/snippets/%s/" %
@@ -69,47 +70,23 @@ class Snippets(BaseHandler):
         self.set_header('Content-Type', 'application/json')
 
     def post(self):
-        if self.get_body_argument('owner'):
-            owner = self.get_body_argument('owner')
-        else:
-            self.write(json_encode('owner is required'))
-
-        if self.get_body_argument('title'):
-            title = self.get_body_argument('title')
-        else:
-            self.write(json_encode('title is required'))
-
-        if self.get_body_argument('code'):
-            code = self.get_body_argument('code')
-        else:
-            self.write(json_encode('code is required'))
-
-        if self.get_body_argument('linenos'):
-            linenos = json.loads(self.get_body_argument('linenos'))
-        else:
-            self.write(json_encode('linenos is required'))
-
-        if self.get_body_argument('language'):
-            language = self.get_body_argument('language')
-        else:
-            self.write(json_encode('language is required'))
-
-        if self.get_body_argument('style'):
-            style = self.get_body_argument('style')
-        else:
-            self.write(json_encode('style is required'))
-
-        if owner and title and code and linenos and language and style:
-            code = Code(owner=owner, title=title, code=code, linenos=linenos, language=language, style=style)
-            code.save()
+        snippet = json.loads(self.request.body)
+        if snippet['owner'] and snippet['title'] and snippet['code']\
+                and snippet['linenos'] and snippet['language'] and snippet['style']:
+            with db.transaction() as transaction:
+                try:
+                    code = Code(**snippet)
+                    code.save()
+                except:
+                    transaction.rollback()
+            code_result = model_to_dict(Code.get(Code.id == model_to_dict(code)['id']))
+            code_result['created_date'] = Helpers.date_handler(code_result['created_date'])
+            self.write(code_result)
         else:
             self.write(json_encode('All fields are required'))
 
 
-
-
 class CurrentSnippet(BaseHandler):
-
     def get(self, snippet):
         if snippet:
             code = model_to_dict(Code.get(Code.id == snippet))
@@ -126,8 +103,10 @@ class CurrentSnippet(BaseHandler):
             self.write(code)
 
     def delete(self, snippet):
-        code_write = Code.delete().where(Code.id == snippet)
-        code_write.execute()
+        if snippet:
+            code_write = Code.get(Code.id == snippet)
+            code_write.delete_instance()
+            self.write('')
 
 
 class Helpers():
